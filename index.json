@@ -56,7 +56,7 @@ const DataModel = mongoose.model('Data', DataSchema);
  * - Writes the "content" field to a file.
  * - Saves the entire JSON body to MongoDB.
  */
-app.post('/', async (req, res) => {
+ app.post('/', async (req, res) => {
   const { content } = req.body;
 
   // Validate the presence of the "content" field
