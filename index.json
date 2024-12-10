@@ -1,0 +1,97 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+const PORT = 3000;
+
+/**
+ * Middleware to parse JSON bodies from incoming requests.
+ * @middleware
+ * Parses the body of incoming requests and makes it available on `req.body`.
+ */
+app.use(bodyParser.json());
+
+/**
+ * Connects to the MongoDB database using Mongoose.
+ * @function mongoose.connect
+ * @param {string} uri - The MongoDB connection string.
+ * @param {object} options - Configuration options for the connection.
+ * Logs success or failure to the console.
+ */
+mongoose.connect('mongodb://127.0.0.1:27017/expressDemo', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('Error connecting to MongoDB:', err));
+
+// Define a schema and model for MongoDB
+/**
+ * MongoDB schema to define the structure of stored data.
+ * @schema DataSchema
+ * @field {String} content - The primary content to store.
+ * @field {Object} otherFields - Any additional fields from the JSON body.
+ */
+const DataSchema = new mongoose.Schema({
+  content: String,
+  otherFields: Object,
+});
+
+/**
+ * Mongoose model to interact with the MongoDB collection.
+ * @model DataModel
+ */
+const DataModel = mongoose.model('Data', DataSchema);
+
+/**
+ * POST endpoint to handle incoming JSON data.
+ * @route POST /
+ * @param {object} req - Express request object.
+ * @param {object} res - Express response object.
+ * @description
+ * - Extracts the "content" field from the request body.
+ * - Responds with the "content" field.
+ * - Writes the "content" field to a file.
+ * - Saves the entire JSON body to MongoDB.
+ */
+app.post('/', async (req, res) => {
+  const { content } = req.body;
+
+  // Validate the presence of the "content" field
+  if (!content) {
+    return res.status(400).json({ error: "Missing 'content' field in the body." });
+  }
+
+  try {
+    // Write the "content" field to a file
+    const filePath = path.join(__dirname, 'output.txt');
+    fs.writeFileSync(filePath, content, 'utf8');
+    console.log(`Content written to file: ${filePath}`);
+
+    // Save the entire JSON body to MongoDB
+    const newData = new DataModel({
+      content,
+      otherFields: req.body,
+    });
+    await newData.save();
+    console.log('Data saved to MongoDB:', newData);
+
+    // Respond with the "content" field
+    res.status(200).json({ content });
+  } catch (error) {
+    console.error('Error handling request:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/**
+ * Starts the Express server.
+ * @function app.listen
+ * @param {number} PORT - The port on which the server will listen.
+ * Logs a message to the console indicating the server is running.
+ */
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
